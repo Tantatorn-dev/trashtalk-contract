@@ -4,7 +4,7 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg};
+use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MessagesResponse};
 use crate::state::{ForumState, FORUM_STATE};
 
 // version info for migration info
@@ -36,7 +36,7 @@ pub fn instantiate(
 pub fn execute(
     deps: DepsMut,
     _env: Env,
-    info: MessageInfo,
+    _info: MessageInfo,
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
@@ -58,12 +58,18 @@ pub fn try_add_message(deps: DepsMut, message: String) -> Result<Response, Contr
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
+        QueryMsg::GetMessages {} => to_binary(&query_messages(deps)?)
     }
 }
 
 fn query_count(deps: Deps) -> StdResult<CountResponse> {
     let state = FORUM_STATE.load(deps.storage)?;
     Ok(CountResponse { count: state.count })
+}
+
+fn query_messages(deps: Deps) -> StdResult<MessagesResponse> {
+    let state = FORUM_STATE.load(deps.storage)?;
+    Ok(MessagesResponse { messages: state.messages })
 }
 
 #[cfg(test)]
@@ -90,12 +96,17 @@ mod tests {
     }
 
     #[test]
-    fn increment() {
+    fn add_message() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { messages:vec![], count: 17 };
+        let msg = InstantiateMsg { messages:vec![], count: 0 };
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        // beneficiary can release it
+        let info = mock_info("anyone", &coins(2, "token"));
+        let msg = ExecuteMsg::AddMessage {message: "Hello".to_string()};
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // beneficiary can release it
         let info = mock_info("anyone", &coins(2, "token"));
@@ -105,7 +116,12 @@ mod tests {
         // should increase counter by 1
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetCount {}).unwrap();
         let value: CountResponse = from_binary(&res).unwrap();
-        assert_eq!(18, value.count);
+        assert_eq!(2, value.count);
+
+        // should has new value in a vector
+        let res = query(deps.as_ref(), mock_env(), QueryMsg::GetMessages {}).unwrap();
+        let value: MessagesResponse = from_binary(&res).unwrap();
+        assert_eq!(vec!["Hello", "Hello"], value.messages);
     }
 
 }
