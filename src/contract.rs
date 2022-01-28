@@ -4,8 +4,8 @@ use cosmwasm_std::{to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
 use cw2::set_contract_version;
 
 use crate::error::ContractError;
-use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, QueryMsg, MessagesResponse};
-use crate::state::{ForumState, FORUM_STATE};
+use crate::msg::{CountResponse, ExecuteMsg, InstantiateMsg, MessagesResponse, QueryMsg};
+use crate::state::{ForumState, Message, FORUM_STATE};
 
 // version info for migration info
 const CONTRACT_NAME: &str = "crates.io:terra-trashtalk";
@@ -40,11 +40,11 @@ pub fn execute(
     msg: ExecuteMsg,
 ) -> Result<Response, ContractError> {
     match msg {
-        ExecuteMsg::AddMessage {message} => try_add_message(deps, message),
+        ExecuteMsg::AddMessage { message } => try_add_message(deps, message),
     }
 }
 
-pub fn try_add_message(deps: DepsMut, message: String) -> Result<Response, ContractError> {
+pub fn try_add_message(deps: DepsMut, message: Message) -> Result<Response, ContractError> {
     FORUM_STATE.update(deps.storage, |mut state| -> Result<_, ContractError> {
         state.messages.push(message);
         state.count += 1;
@@ -58,7 +58,7 @@ pub fn try_add_message(deps: DepsMut, message: String) -> Result<Response, Contr
 pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
     match msg {
         QueryMsg::GetCount {} => to_binary(&query_count(deps)?),
-        QueryMsg::GetMessages {} => to_binary(&query_messages(deps)?)
+        QueryMsg::GetMessages {} => to_binary(&query_messages(deps)?),
     }
 }
 
@@ -69,7 +69,9 @@ fn query_count(deps: Deps) -> StdResult<CountResponse> {
 
 fn query_messages(deps: Deps) -> StdResult<MessagesResponse> {
     let state = FORUM_STATE.load(deps.storage)?;
-    Ok(MessagesResponse { messages: state.messages })
+    Ok(MessagesResponse {
+        messages: state.messages,
+    })
 }
 
 #[cfg(test)]
@@ -82,7 +84,10 @@ mod tests {
     fn proper_initialization() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { count: 17, messages:vec![] };
+        let msg = InstantiateMsg {
+            count: 17,
+            messages: vec![],
+        };
         let info = mock_info("creator", &coins(1000, "earth"));
 
         // we can just call .unwrap() to assert this was a success
@@ -99,18 +104,34 @@ mod tests {
     fn add_message() {
         let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
 
-        let msg = InstantiateMsg { messages:vec![], count: 0 };
+        let msg = InstantiateMsg {
+            messages: vec![],
+            count: 0,
+        };
         let info = mock_info("creator", &coins(2, "token"));
         let _res = instantiate(deps.as_mut(), mock_env(), info, msg).unwrap();
 
-        // beneficiary can release it
-        let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::AddMessage {message: "Hello".to_string()};
-        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+        let new_message = Message {
+            message: "hello moto".to_string(),
+            nickname: "William".to_string(),
+        };
 
         // beneficiary can release it
         let info = mock_info("anyone", &coins(2, "token"));
-        let msg = ExecuteMsg::AddMessage {message: "Hello".to_string()};
+        let msg = ExecuteMsg::AddMessage {
+            message: new_message,
+        };
+        let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
+
+        let new_message = Message {
+            message: "hello world".to_string(),
+            nickname: "Robert".to_string(),
+        };
+        // beneficiary can release it
+        let info = mock_info("anyone", &coins(2, "token"));
+        let msg = ExecuteMsg::AddMessage {
+            message: new_message,
+        };
         let _res = execute(deps.as_mut(), mock_env(), info, msg).unwrap();
 
         // should increase counter by 1
@@ -121,7 +142,18 @@ mod tests {
         // should has new value in a vector
         let res = query(deps.as_ref(), mock_env(), QueryMsg::GetMessages {}).unwrap();
         let value: MessagesResponse = from_binary(&res).unwrap();
-        assert_eq!(vec!["Hello", "Hello"], value.messages);
+        assert_eq!(
+            vec![
+                Message {
+                    message: "hello moto".to_string(),
+                    nickname: "William".to_string()
+                },
+                Message {
+                    message: "hello world".to_string(),
+                    nickname: "Robert".to_string()
+                }
+            ],
+            value.messages
+        );
     }
-
 }
