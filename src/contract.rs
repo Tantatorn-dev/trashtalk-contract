@@ -77,12 +77,12 @@ fn query_messages(deps: Deps) -> StdResult<MessagesResponse> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use cosmwasm_std::testing::{mock_dependencies_with_balance, mock_env, mock_info};
+    use cosmwasm_std::testing::{mock_dependencies, mock_env, mock_info};
     use cosmwasm_std::{coins, from_binary};
 
     #[test]
     fn proper_initialization() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg {
             count: 17,
@@ -102,7 +102,7 @@ mod tests {
 
     #[test]
     fn add_message() {
-        let mut deps = mock_dependencies_with_balance(&coins(2, "token"));
+        let mut deps = mock_dependencies(&coins(2, "token"));
 
         let msg = InstantiateMsg {
             messages: vec![],
