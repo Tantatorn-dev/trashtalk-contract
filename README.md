@@ -1,11 +1,44 @@
-# CosmWasm Starter Pack
+# trashtalk-contract
 
-This is a template to build smart contracts in Rust to run inside a
-[Cosmos SDK](https://github.com/cosmos/cosmos-sdk) module on all chains that enable it.
-To understand the framework better, please read the overview in the
-[cosmwasm repo](https://github.com/CosmWasm/cosmwasm/blob/master/README.md),
-and dig into the [cosmwasm docs](https://www.cosmwasm.com).
-This assumes you understand the theory and just want to get coding.
+A smart contract for Terra Trashtalk: A decentralized simple forum that users can add their messages anonymously. A smart contract is deployed on Terra Network. This project is based on CosmWasm template.
+
+## Deployment
+- currently deployed on Terra Testnet at address: terra1696x9gjm9mmgqy3nn8wkh62qy5vgms6088slgz
+
+## Contract
+
+### Instantiate
+
+```
+{
+"messages":[],
+"count": 0
+}
+```
+
+### Execute
+
+```
+{
+"add_message": 
+{
+	"message": {
+		"message": "hello",
+		"nickname": "Tommy"
+	}
+}
+}
+```
+
+### Query
+
+```
+{"get_messages":{}}
+```
+
+```
+{"get_count":{}}
+```
 
 ## Creating a new repo from template
 
